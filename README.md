@@ -36,7 +36,7 @@ CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" node scrip
 | `locale` | `vi` | mã trong `scratch-l10n` |
 | `title` | — | tên dùng khi tạo mới (thắng "Scratch Project") |
 | `autosave` | `60` | giây, tối thiểu 15 |
-| `csrf` | — | token gửi trong `X-CSRF-TOKEN` cho POST/PUT do trang này tự gọi |
+| `csrf` | đọc `<meta name="csrf-token">` của trang cha | token gửi trong `X-CSRF-TOKEN` cho POST/PUT do trang này tự gọi; query chỉ để thử tay (query lọt vào access log/Referer) |
 | `projectHost` / `assetHost` / `libraryHost` | `/scratch/api/projects` / `/scratch/api/assets` / `library` | nơi lưu; đường dẫn tương đối |
 
 ### HTTP (hình dạng của scratch-storage, LMS phục vụ đúng như vậy)

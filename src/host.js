@@ -12,12 +12,23 @@
  *   LMS → host : scratch:save, scratch:stop, scratch:probe {criteria}
  *
  * Query: project=<id>|new, mode=editor|player, locale=vi|en, title=<tên khi tạo mới>,
- *        autosave=<giây>, csrf=<token>, projectHost, assetHost, libraryHost
+ *        autosave=<giây>, projectHost, assetHost, libraryHost
+ *        (csrf=<token> chỉ để thử tay; bình thường đọc <meta name="csrf-token"> của trang cha)
  */
 (function () {
     'use strict';
 
     const params = new URLSearchParams(window.location.search);
+
+    function parentCsrfToken () {
+        try {
+            return window.parent !== window
+                ? (window.parent.document.querySelector('meta[name="csrf-token"]')?.content || '')
+                : '';
+        } catch (e) {
+            return '';
+        }
+    }
     const boot = document.getElementById('boot');
     const appTarget = document.getElementById('app');
 
@@ -27,7 +38,9 @@
         locale: params.get('locale') || 'vi',
         title: params.get('title') || '',
         autosave: Math.max(15, parseInt(params.get('autosave') || '60', 10) || 60),
-        csrf: params.get('csrf') || '',
+        // Token CSRF đọc từ <meta> của trang LMS cha (cùng origin) — không đi
+        // qua query string, nơi nó lọt vào access log và Referer.
+        csrf: params.get('csrf') || parentCsrfToken(),
         projectHost: params.get('projectHost') || '/scratch/api/projects',
         assetHost: params.get('assetHost') || '/scratch/api/assets',
         libraryHost: params.get('libraryHost') || 'library'
