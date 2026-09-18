@@ -1,0 +1,7 @@
+node_modules/
+build/
+library/
+dist/
+*.tar.gz
+*.sha256
+*.tgz

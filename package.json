@@ -1,0 +1,19 @@
+{
+  "name": "nextlms-scratch",
+  "version": "0.1.0",
+  "description": "Self-hosted Scratch editor host page for NextLMS — wraps the unmodified @scratch/scratch-gui standalone build and points its storage at the LMS.",
+  "license": "AGPL-3.0-only",
+  "private": true,
+  "repository": "https://gitlab.com/codegym-vietnam/nextlms-scratch",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "fetch-library": "node scripts/fetch-library.mjs",
+    "build": "bash scripts/build.sh",
+    "serve": "node scripts/dev-server.mjs"
+  },
+  "dependencies": {
+    "@scratch/scratch-gui": "15.1.1"
+  }
+}
