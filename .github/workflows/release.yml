@@ -1,0 +1,35 @@
+# Đẩy tag v* → build tarball có phiên bản và đăng thành GitHub Release
+# (kèm .sha256). LMS tải từ:
+#   https://github.com/codegym-vn/nextlms-scratch/releases/download/v<ver>/nextlms-scratch-<ver>.tar.gz
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run fetch-library
+      - name: Build tarball
+        run: VERSION="${GITHUB_REF_NAME#v}" npm run build
+      - name: Kiểm phiên bản tarball khớp tag
+        run: |
+          test "$(cat build/VERSION)" = "${GITHUB_REF_NAME#v}"
+          cat nextlms-scratch-*.tar.gz.sha256
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            nextlms-scratch-*.tar.gz
+            nextlms-scratch-*.tar.gz.sha256
+          generate_release_notes: true

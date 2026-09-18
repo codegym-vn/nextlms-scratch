@@ -12,7 +12,7 @@ npm run fetch-library  # 1.348 tệp ≈ 57 MB từ cdn.assets.scratch.mit.edu �
 npm run build          # build/ + nextlms-scratch-<version>.tar.gz + .sha256 (≈130 MB)
 ```
 
-Tarball chứa: `index.html`, `host.js`, `storage.js`, `about.js`, `precompress.sh`, `scratch-gui-standalone.js` (17 MB), `chunks/`, `static/`, `libraries/`, `library/`, `LICENSE`, `TRADEMARK`, `VERSION`. Không nén sẵn `.gz` (gz lồng tar.gz phình gấp đôi); bên nhận chạy `precompress.sh` sau khi giải nén để nginx `gzip_static` dùng.
+Tarball chứa: `index.html`, `host.js`, `storage.js`, `about.js`, `precompress.sh`, `scratch-gui-standalone.js` (17 MB), `chunks/`, `static/`, `libraries/`, `library/`, `LICENSE`, `TRADEMARK`, `VERSION`. ⚠ SHA256 phụ thuộc mtime/thứ tự trong tar nên **chỉ SHA của tarball trên GitHub Release là chuẩn**; bản build local khác SHA là bình thường. Không nén sẵn `.gz` (gz lồng tar.gz phình gấp đôi); bên nhận chạy `precompress.sh` sau khi giải nén để nginx `gzip_static` dùng.
 
 Máy không có Node: mọi lệnh chạy được trong image php của LMS (`docker run --rm --entrypoint node -v "$PWD":/w -w /w next-lms-v2-php-test scripts/fetch-library.mjs`).
 
@@ -69,6 +69,10 @@ CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" node scrip
 | LMS → host | `scratch:probe {requestId}` | ảnh chụp trạng thái VM (target, biến, số khối) |
 
 Mọi thông điệp còn được ghi vào `window.NextLmsScratchEvents` để khắc phục sự cố; `window.NextLmsScratchDebug` giữ `state` (redux) và `vm`.
+
+## Phát hành
+
+`git tag v0.1.0 && git push --tags` → workflow `release` build tarball trên `ubuntu-latest` (node 22), kiểm `VERSION` khớp tag, đăng GitHub Release với `nextlms-scratch-<ver>.tar.gz` + `.sha256`. LMS ghim `<ver>` + SHA đó trong `Modules/ScratchStudio/config/config.php`.
 
 ## Nâng phiên bản upstream
 

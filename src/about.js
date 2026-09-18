@@ -14,7 +14,7 @@ window.NextLmsScratchAbout = {
             <p>Based on Scratch from the MIT Media Laboratory. Trình soạn là <code>${this.upstream}</code>
             (giấy phép AGPL-3.0) được dùng nguyên vẹn; trang nhúng này cũng phát hành dưới AGPL-3.0.</p>
             <ul>
-                <li>Mã nguồn trang nhúng: <a href="https://gitlab.com/codegym-vietnam/nextlms-scratch" target="_blank" rel="noopener">gitlab.com/codegym-vietnam/nextlms-scratch</a></li>
+                <li>Mã nguồn trang nhúng: <a href="https://github.com/codegym-vn/nextlms-scratch" target="_blank" rel="noopener">github.com/codegym-vn/nextlms-scratch</a></li>
                 <li>Mã nguồn trình soạn: <a href="https://github.com/scratchfoundation/scratch-editor" target="_blank" rel="noopener">github.com/scratchfoundation/scratch-editor</a></li>
                 <li>Thư viện nhân vật, phông nền, âm thanh của Scratch: CC BY-SA 2.0, © Scratch Foundation.</li>
             </ul>
