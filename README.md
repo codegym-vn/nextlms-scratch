@@ -59,12 +59,12 @@ CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" node scrip
 |---|---|---|
 | host → LMS | `scratch:ready {project, mode}` | dự án đã nạp |
 | host → LMS | `scratch:created {id, hash}` | editor vừa POST tạo (chỉ khi `project=new`) — LMS đổi URL sang id |
-| host → LMS | `scratch:saved {id, hash}` | sau mỗi PUT (tự lưu, Lưu, hoặc lệnh `scratch:save`) |
+| host → LMS | `scratch:saved {id, hash, requestIds}` | sau mỗi PUT (tự lưu, Lưu, hoặc lệnh `scratch:save`); `requestIds` = các `requestId` của lệnh `scratch:save` mà lượt lưu này phục vụ (tự lưu: `[]`) |
 | host → LMS | `scratch:dirty {dirty}` | có/hết thay đổi chưa lưu |
 | host → LMS | `scratch:run {running}` | cờ xanh / dừng |
 | host → LMS | `scratch:error {reason, message, status?}` | lưu thất bại, `reason` là mã lỗi của LMS |
 | host → LMS | `scratch:state {requestId, state}` | trả lời `scratch:probe` |
-| LMS → host | `scratch:save` | ép lưu ngay (`manualUpdateProject`) |
+| LMS → host | `scratch:save {requestId?}` | ép lưu ngay (`manualUpdateProject`); đang tự lưu thì xếp hàng, dispatch sau khi lượt đó xong; `requestId` được trả lại trong `requestIds` của `scratch:saved`/`scratch:error` |
 | LMS → host | `scratch:stop` | `vm.stopAll()` |
 | LMS → host | `scratch:probe {requestId}` | ảnh chụp trạng thái VM (target, biến, số khối) |
 

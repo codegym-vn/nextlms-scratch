@@ -97,14 +97,15 @@ if (!created) fail('editor không POST tạo dự án — events: ' + JSON.strin
 console.log(`ok  scratch:created id=${created.id}`);
 
 // 3. Lệnh lưu từ "LMS" (postMessage cùng origin) → PUT → scratch:saved.
-await evaluate(`window.postMessage({type: 'scratch:save'}, window.location.origin)`);
+await evaluate(`window.postMessage({type: 'scratch:save', requestId: 'smoke-1'}, window.location.origin)`);
 let saved = null;
 for (let i = 0; i < 40 && !saved; i++) {
     await sleep(500);
     saved = await evaluate(`((window.NextLmsScratchEvents || []).find(e => e.type === 'scratch:saved') || null)`);
 }
 if (!saved) fail('không thấy scratch:saved sau scratch:save — events: ' + JSON.stringify(await evaluate('window.NextLmsScratchEvents')));
-console.log(`ok  scratch:saved hash=${saved.hash}`);
+if (!Array.isArray(saved.requestIds) || !saved.requestIds.includes('smoke-1')) fail('scratch:saved không mang requestIds của lệnh scratch:save — ' + JSON.stringify(saved));
+console.log(`ok  scratch:saved hash=${saved.hash} requestIds=${JSON.stringify(saved.requestIds)}`);
 
 // 4. Không request nào rời origin trong suốt phiên (thư viện media phải là bản sao local).
 //    ⚠ Thư viện nhân vật mở qua redux trong headless không render item (react-modal

@@ -1,6 +1,6 @@
 {
   "name": "nextlms-scratch",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Self-hosted Scratch editor host page for NextLMS — wraps the unmodified @scratch/scratch-gui standalone build and points its storage at the LMS.",
   "license": "AGPL-3.0-only",
   "private": true,

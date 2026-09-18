@@ -7,9 +7,15 @@
  * `postMessage` cùng origin. LMS không biết gì về Redux/VM; mọi thứ nó cần
  * là bảng thông điệp dưới đây (README.md là tài liệu chuẩn):
  *
- *   host → LMS : scratch:ready, scratch:created {id}, scratch:saved {id, hash},
- *                scratch:dirty {dirty}, scratch:run {running}, scratch:error {reason, message}
- *   LMS → host : scratch:save, scratch:stop, scratch:probe {criteria}
+ *   host → LMS : scratch:ready, scratch:created {id}, scratch:saved {id, hash, requestIds},
+ *                scratch:dirty {dirty}, scratch:run {running}, scratch:error {reason, message, requestIds}
+ *   LMS → host : scratch:save {requestId?}, scratch:stop, scratch:probe {criteria}
+ *
+ * `scratch:save {requestId}`: LMS muốn biết ĐÚNG lượt lưu do mình yêu cầu đã
+ * xong (nút Nộp bài). Tự lưu đang chạy thì yêu cầu xếp hàng và chỉ dispatch
+ * sau khi lượt đó kết thúc — scratch-gui bỏ qua `manualUpdateProject` khi
+ * đang AUTO_UPDATING, nên gửi ngay là mất; lượt lưu mang `requestIds` của
+ * các yêu cầu nó phục vụ, tự lưu thì `requestIds: []`.
  *
  * Query: project=<id>|new, mode=editor|player, locale=vi|en, title=<tên khi tạo mới>,
  *        autosave=<giây>, projectHost, assetHost, libraryHost
@@ -72,6 +78,10 @@
     let vm = null;
     let editorState = null;
 
+    // Yêu cầu lưu từ LMS chờ dispatch / đang được một lượt lưu phục vụ.
+    let queuedSaveRequests = [];
+    let activeSaveRequests = [];
+
     const storage = new window.NextLmsScratchStorage({
         projectHost: config.projectHost,
         assetHost: config.assetHost,
@@ -81,9 +91,33 @@
             if (event === 'created' || event === 'saved') {
                 setDirty(false);
             }
+            if (event === 'created' || event === 'saved' || event === 'error') {
+                payload = Object.assign({}, payload, {requestIds: activeSaveRequests});
+                activeSaveRequests = [];
+            }
             post(event, payload);
+            if (event === 'created' || event === 'saved' || event === 'error') {
+                // Trạng thái redux về SHOWING_WITH_ID sau tick này.
+                setTimeout(flushSaveRequests, 0);
+            }
         }
     });
+
+    function loadingState () {
+        try {
+            return editorState.store.getState().scratchGui.projectState.loadingState;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function flushSaveRequests () {
+        if (!editorState || queuedSaveRequests.length === 0) return;
+        if (loadingState() !== 'SHOWING_WITH_ID') return; // đang lưu: đợi lượt này xong
+        activeSaveRequests = queuedSaveRequests;
+        queuedSaveRequests = [];
+        editorState.store.dispatch(GUI.manualUpdateProject());
+    }
 
     function setDirty (value) {
         if (dirty === value) return;
@@ -104,7 +138,8 @@
 
         switch (event.data.type) {
         case 'scratch:save':
-            if (editorState) editorState.store.dispatch(GUI.manualUpdateProject());
+            queuedSaveRequests.push(event.data.requestId == null ? null : String(event.data.requestId));
+            flushSaveRequests();
             break;
         case 'scratch:stop':
             if (vm) vm.stopAll();
