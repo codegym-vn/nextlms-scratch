@@ -29,6 +29,19 @@ mkdir -p build
 cp -R "$GUI_DIR/dist/." build/
 find build -name '*.map' -delete
 rm -f build/scratch-gui.js build/scratch-gui.js.LICENSE.txt
+
+# Bundle hard-code webpack publicPath "/" (cả runtime chính lẫn runtime lồng của
+# scratch-storage) → fetch-worker bị gọi ở /chunks/… của GỐC SITE. Dưới LMS trang
+# nhúng nằm ở /scratch-editor/<ver>/ nên 404 → tài nguyên không nạp, editor kẹt
+# ở màn chờ. Vá thành đọc biến index.html đặt sẵn (thư mục của trang).
+PUBLIC_PATH='(typeof window!=="undefined"\&\&window.__NEXTLMS_SCRATCH_BASE__||"/")'
+sed -E -i.bak "s#(__nested_webpack_require_[0-9]+__|__webpack_require__)\.p=\"/\"#\1.p=$PUBLIC_PATH#g" build/scratch-gui-standalone.js
+rm -f build/scratch-gui-standalone.js.bak
+PATCHED=$(grep -o '__NEXTLMS_SCRATCH_BASE__' build/scratch-gui-standalone.js | wc -l | tr -d ' ')
+if [ "$PATCHED" -lt 2 ]; then
+    echo "build: chỉ vá được $PATCHED/2 publicPath trong scratch-gui-standalone.js — bundle đổi hình dạng?" >&2
+    exit 1
+fi
 cp src/index.html src/host.js src/storage.js build/
 sed "s/__VERSION__/$VERSION/" src/about.js > build/about.js
 cp -R library build/library

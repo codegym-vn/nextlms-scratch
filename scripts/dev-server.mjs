@@ -11,6 +11,9 @@ import {readFileSync, existsSync, statSync} from 'node:fs';
 import path from 'node:path';
 
 const root = path.resolve(process.argv[2] || 'build');
+// PREFIX=/scratch-editor/0.0.0 → phục vụ build dưới sub-path như LMS thật, để bắt
+// mọi đường dẫn tuyệt-đối-tới-gốc còn sót trong bundle (fetch-worker từng 404 vì thế).
+const prefix = (process.env.PREFIX || '').replace(/\/$/, '');
 const port = Number(process.env.PORT || 8602);
 const projects = new Map();
 const assets = new Map();
@@ -77,10 +80,12 @@ http.createServer(async (req, res) => {
         return json(res, created ? 201 : 200, {status: 'ok', 'content-name': m[1]});
     }
 
-    // tĩnh
-    let file = path.join(root, decodeURIComponent(p === '/' ? '/index.html' : p));
+    // tĩnh (dưới prefix nếu có; ngoài prefix là 404 như nginx thật)
+    if (prefix && !p.startsWith(prefix + '/')) { res.writeHead(404); return res.end('not found (outside PREFIX)'); }
+    const rel = prefix ? p.slice(prefix.length) : p;
+    let file = path.join(root, decodeURIComponent(rel === '/' ? '/index.html' : rel));
     if (!file.startsWith(root)) { res.writeHead(403); return res.end(); }
     if (!existsSync(file) || statSync(file).isDirectory()) { res.writeHead(404); return res.end('not found'); }
     res.writeHead(200, {'Content-Type': MIME[path.extname(file)] || 'application/octet-stream'});
     res.end(readFileSync(file));
-}).listen(port, () => console.log(`nextlms-scratch dev server: http://localhost:${port}/?project=new  (root: ${root})`));
+}).listen(port, () => console.log(`nextlms-scratch dev server: http://localhost:${port}${prefix}/?project=new  (root: ${root})`));

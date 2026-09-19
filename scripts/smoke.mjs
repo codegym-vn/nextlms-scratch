@@ -55,10 +55,13 @@ await new Promise(r => ws.addEventListener('open', r));
 let seq = 0;
 const pending = new Map();
 const requests = [];
+const failed = [];
 ws.addEventListener('message', event => {
     const msg = JSON.parse(event.data);
     if (msg.id && pending.has(msg.id)) { pending.get(msg.id)(msg); pending.delete(msg.id); }
     if (msg.method === 'Network.requestWillBeSent') requests.push(msg.params.request);
+    if (msg.method === 'Network.responseReceived' && msg.params.response.status >= 400) failed.push(`${msg.params.response.status} ${msg.params.response.url}`);
+    if (msg.method === 'Network.loadingFailed') failed.push(`${msg.params.errorText} (request ${msg.params.requestId})`);
 });
 const send = (method, params = {}) => new Promise(resolve => {
     const id = ++seq;
@@ -87,6 +90,24 @@ if (!ready) {
 }
 console.log('ok  scratch:ready');
 
+// 1b. Giao diện EDITOR thật sự hiện: có bảng khối lệnh (Blockly) và không có
+//     logo Scratch (isEmbedded từng ép player-only + branding mà không ai nhìn).
+await sleep(2000);
+const ui = await evaluate([
+    '(() => ({',
+    '  blockly: !!document.querySelector(".blocklyToolboxDiv, .blocklyFlyout"),',
+    '  spriteInfo: !!document.querySelector(\'[class*="sprite-info"], [class*="sprite-selector"]\'),',
+    // Logo Scratch được bundle inline (data:) và chọn theo prop `platform` — index.html ẩn bằng CSS;
+    // cờ đỏ là ảnh logo/nút Hướng dẫn còn HIỂN THỊ (offsetParent khác null).
+    '  branding: Array.from(document.querySelectorAll(\'img[class*="scratch-logo"], .tutorials-button\')).some(i => i.offsetParent !== null),',
+    '  stage: !!document.querySelector("canvas")',
+    '}))()'
+].join('\n'));
+if (!ui.blockly || !ui.spriteInfo || !ui.stage) fail('mode=editor không vẽ giao diện soạn: ' + JSON.stringify(ui));
+if (ui.branding) fail('có logo Scratch trên thanh menu (TRADEMARK): ' + JSON.stringify(ui));
+console.log('ok  giao diện editor (bảng khối + sprite + sân khấu, không logo)');
+if (process.env.SHOT) { const shot = await send('Page.captureScreenshot', {format: 'png'}); (await import('node:fs')).writeFileSync(process.env.SHOT, Buffer.from(shot.result.data, 'base64')); }
+
 // 2. Editor tự tạo dự án mới (canCreateNew + isShowingWithoutId → POST).
 let created = null;
 for (let i = 0; i < 60 && !created; i++) {
@@ -107,13 +128,44 @@ if (!saved) fail('không thấy scratch:saved sau scratch:save — events: ' + J
 if (!Array.isArray(saved.requestIds) || !saved.requestIds.includes('smoke-1')) fail('scratch:saved không mang requestIds của lệnh scratch:save — ' + JSON.stringify(saved));
 console.log(`ok  scratch:saved hash=${saved.hash} requestIds=${JSON.stringify(saved.requestIds)}`);
 
-// 4. Không request nào rời origin trong suốt phiên (thư viện media phải là bản sao local).
+// 4. Mở LẠI dự án vừa lưu (project=<id>): đường này mới tải tài nguyên qua
+//    fetch-worker của scratch-storage — dự án mới không cần worker nên bước 1–3
+//    xanh cả khi worker 404 (đã xảy ra dưới sub-path của LMS: kẹt ở màn chờ).
+await send('Page.navigate', {url: `${BASE}/?project=${created.id}&mode=editor&locale=vi`});
+let reopened = false;
+for (let i = 0; i < 120 && !reopened; i++) {
+    await sleep(500);
+    reopened = await evaluate(`(window.NextLmsScratchEvents || []).some(e => e.type === 'scratch:ready')`);
+}
+if (!reopened) fail('mở lại dự án ' + created.id + ' không tới scratch:ready sau 60 s — request lỗi: ' + JSON.stringify(failed.slice(0, 5)));
+console.log(`ok  mở lại dự án ${created.id}`);
+
+// 4b. mode=player: chỉ sân khấu, không bảng khối, không logo.
+await send('Page.navigate', {url: `${BASE}/?project=${created.id}&mode=player&locale=vi`});
+let playerReady = false;
+for (let i = 0; i < 120 && !playerReady; i++) {
+    await sleep(500);
+    playerReady = await evaluate(`(window.NextLmsScratchEvents || []).some(e => e.type === 'scratch:ready')`);
+}
+if (!playerReady) fail('mode=player không tới scratch:ready');
+const playerUi = await evaluate('(() => ({blockly: !!document.querySelector(".blocklyToolboxDiv"), stage: !!document.querySelector("canvas"), logo: Array.from(document.querySelectorAll(\'img[class*="scratch-logo"]\')).some(i => i.offsetParent !== null)}))()');
+if (playerUi.blockly || !playerUi.stage || playerUi.logo) fail('mode=player sai giao diện: ' + JSON.stringify(playerUi));
+console.log('ok  giao diện player (sân khấu, không bảng khối, không logo)');
+if (process.env.SHOT) { const shot = await send('Page.captureScreenshot', {format: 'png'}); (await import('node:fs')).writeFileSync(process.env.SHOT.replace(/\.png$/, '-player.png'), Buffer.from(shot.result.data, 'base64')); }
+
+// 5. Không request nào rời origin trong suốt phiên (thư viện media phải là bản sao local).
 //    ⚠ Thư viện nhân vật mở qua redux trong headless không render item (react-modal
 //    + lazy chunk), nên thumbnail của thư viện chưa kiểm tự động được — QA tay
 //    trên trình duyệt thật khi cài vào LMS (xem README).
-const foreign = requests.filter(r => !r.url.startsWith(BASE) && !r.url.startsWith('data:') && !r.url.startsWith('blob:'));
+const origin = new URL(BASE).origin;
+const foreign = requests.filter(r => !r.url.startsWith(origin) && !r.url.startsWith('data:') && !r.url.startsWith('blob:'));
 if (foreign.length) fail('có request rời origin:\n' + foreign.map(r => r.url).slice(0, 10).join('\n'));
+// Mọi request đều phải 2xx/3xx: fetch-worker từng 404 dưới sub-path mà editor vẫn
+// "sẵn sàng" với dự án mới — chỉ dự án có tài nguyên mới kẹt. Chạy với PREFIX để bắt.
+if (failed.length) fail('có request lỗi:\n' + failed.slice(0, 10).join('\n'));
+console.log('ok  không request nào lỗi');
 console.log(`ok  không request nào rời origin (${requests.length} request)`);
+if (process.env.DEBUG_REQUESTS) console.log(requests.map(r => r.url).join('\n'));
 
 const errors = await evaluate(`(window.NextLmsScratchEvents || []).filter(e => e.type === 'scratch:error')`);
 if (errors.length) fail('scratch:error: ' + JSON.stringify(errors));

@@ -8,6 +8,10 @@
     <style>
         html, body { margin: 0; height: 100%; overflow: hidden; background: #e5f0ff; font-family: system-ui, sans-serif; }
         #app { position: absolute; inset: 0; }
+        /* TRADEMARK: scratch-gui 15 chọn logo theo prop `platform`, không nhận `logo`
+           — ẩn ảnh logo + nút "home" bọc nó. Cùng lúc ẩn "Hướng dẫn" (video/ảnh từ
+           scratch.mit.edu — byte rời máy chủ) và nút "Sửa lỗi" (modal debug của MIT). */
+        #logo_img, button:has(> #logo_img), button[class*="menu-bar_no-offset"] { display: none !important; }
         #boot { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #4c97ff; font-size: 15px; }
         #boot.error { color: #b91c1c; padding: 24px; text-align: center; white-space: pre-wrap; }
     </style>
@@ -15,6 +19,9 @@
 <body>
     <div id="boot">Đang tải trình soạn…</div>
     <div id="app"></div>
+    <!-- Bundle của scratch-gui hard-code publicPath "/" (build.sh vá lại để đọc biến này):
+         worker tải tài nguyên nằm ở <thư mục trang này>/chunks/, không phải gốc site. -->
+    <script>window.__NEXTLMS_SCRATCH_BASE__ = location.pathname.replace(/[^/]*$/, '');</script>
     <script src="scratch-gui-standalone.js"></script>
     <script src="storage.js"></script>
     <script src="about.js"></script>

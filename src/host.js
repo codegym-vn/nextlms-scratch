@@ -175,11 +175,17 @@
     try {
         GUI.setAppElement(appTarget);
 
+        // ⚠ KHÔNG bật `isEmbedded`: reducer của scratch-gui ép nó thành
+        // {isPlayerOnly: true, isFullScreen: true, showBranding: true} — tức là
+        // mode=editor vẫn chỉ vẽ sân khấu + lá cờ (không có bảng khối lệnh), và
+        // showBranding vẽ logo Scratch (vi phạm TRADEMARK). Đã ship như thế ở
+        // 0.1.0/0.1.1 vì smoke chỉ đợi scratch:ready, không nhìn giao diện.
+        // Player: isPlayerOnly + isFullScreen cho sân khấu đầy khung, không logo.
         editorState = new GUI.EditorState({
             locale: config.locale,
-            isEmbedded: true,
+            isEmbedded: false,
             isPlayerOnly: config.mode === 'player',
-            isFullScreen: false
+            isFullScreen: config.mode === 'player'
         }, () => ({storage}));
 
         const root = GUI.createStandaloneRoot(editorState, appTarget);
