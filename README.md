@@ -23,7 +23,7 @@ npm run serve          # http://localhost:8602/?project=new — kho giả trong 
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" node scripts/smoke.mjs
 ```
 
-`scripts/smoke.mjs` lái Chrome headless qua DevTools Protocol: đợi `scratch:ready`, kiểm editor tự tạo dự án (POST), ép lưu bằng `postMessage` (PUT), và xác nhận không request nào rời origin. Thumbnail thư viện nhân vật chưa kiểm tự động được (modal không render trong headless) — QA tay khi cài vào LMS.
+`scripts/smoke.mjs` lái Chrome headless qua DevTools Protocol: đợi `scratch:ready`, **soi giao diện** (bảng khối + sprite + sân khấu ở `mode=editor`, không logo; chỉ sân khấu ở `mode=player`), kiểm editor tự tạo dự án (POST), ép lưu bằng `postMessage` (PUT, `requestIds`), **mở lại dự án đã lưu**, xác nhận mọi request 2xx/3xx và không request nào rời origin. ⚠ Chạy dev-server với `PREFIX=/scratch-editor/x` (`BASE=http://localhost:8602/scratch-editor/x`) để mô phỏng LMS — bản 0.1.0/0.1.1 từng "xanh" ở gốc `/` mà dưới sub-path fetch-worker 404, và `isEmbedded` từng khiến `mode=editor` chỉ vẽ sân khấu suốt hai bản mà smoke không nhìn giao diện. Thumbnail thư viện nhân vật chưa kiểm tự động được (modal không render trong headless) — QA tay khi cài vào LMS.
 
 ## Giao thức với LMS — tài liệu chuẩn
 
